@@ -1,5 +1,41 @@
+import pdb
 BLACK = 0
 RED = 1
+
+class LLNode(object):
+
+    def __init__(self, start, end):
+        self.__start = start
+        self.__end = end
+        self.__left = None
+        self.__right = None
+
+    def __repr__(self):
+        return "(%d, %d)" % (self.__start, self.__end)
+
+    @property
+    def start(self):
+        return self.__start
+
+    @property
+    def end(self):
+        return self.__end
+
+    @property
+    def left(self):
+        return self.__left
+
+    @left.setter
+    def left(self, val):
+        self.__left = val
+
+    @property
+    def right(self):
+        return self.__right
+
+    @right.setter
+    def right(self, val):
+        self.__right = val
 
 class Interval(object):
 
@@ -234,16 +270,19 @@ class IntervalTree(object):
 
     def query(self, point):
         ret = list()
-        self.query_recurse(point, self.root, ret)
-        return ret
+        visits =  self.query_recurse(point, self.root, ret)
+        return (ret, visits)
 
     def query_recurse(self, point, root, ret):
+        print("comparing (%s, %s)" % (root.start, root.end))
+        visits = 1
         if point <= root.end and point >= root.start:
             ret.append(root)
         if root.left is not None and root.left.max >= point:
-            self.query_recurse(point, root.left, ret)
+            visits += self.query_recurse(point, root.left, ret)
         if root.right is not None:
-            self.query_recurse(point, root.right, ret)
+            visits += self.query_recurse(point, root.right, ret)
+        return visits
 
     def __repr__(self):
         l = list()
@@ -266,7 +305,16 @@ def find_intervals(p, intervals):
             ret.append(i)
     return ret
 
-t = IntervalTree()
+def find_intervals_ll(p, head_node):
+    ret = list()
+    curr = head_node
+    while curr:
+        if p >= curr.start and p <= curr.end:
+            ret.append(curr)
+        curr = curr.right
+    return ret
+
+it = IntervalTree()
 
 from random import randrange, seed
 from time import time
@@ -275,22 +323,35 @@ seed(100)
 
 print("Generating intervals")
 dat = list()
-for i in range(1000):
+head = None
+nodes = list()
+curr = None
+
+
+for i in range(10):
     b1 = randrange(1000)
     b2 = randrange(1000)
-    i = [min(b1, b2), max(b1,b2)]
+    b1 = (i+1)*100
+    b2 = (i+3)*100
+    mn = min(b1, b2)
+    mx = max(b1, b2)
+    i = [mn, mx]
     dat.append(i)
+    ll = LLNode(mn, mx)
+    nodes.append(ll)
+    if curr:
+        curr.right = ll
+        ll.left = curr
+        curr = ll
+    else:
+        head = ll
+        curr = ll
+
+print(dat)
 
 print("Building interval tree")
 for i in dat:
-    t.insert(i[0], i[1])
-
-# t.insert(2,10)
-# t.insert(6,15)
-# print(t)
-# print(t.query(8))
-# print(t.query(4))
-# print(t.query(14))
+    it.insert(i[0], i[1])
 
 def compare(intervals, lists):
     if len(intervals) != len(lists):
@@ -304,33 +365,28 @@ def compare(intervals, lists):
 def benchmark(query):
     q = query
     t1 = time()
-    it_res = t.query(q)
+    (it_res, visits) = it.query(q)
+    print(visits)
     t2 = time()
     it_time = t2-t1
     t1 = t2
-    bf_res = find_intervals(q, dat)
+    #bf_res = find_intervals(q, dat)
+    bf_res = find_intervals_ll(q, head)
     t2 = time()
     bf_time = t2-t1
     it_res = sorted(map(lambda x: (x.start, x.end), it_res))
-    bf_res = sorted(map(lambda x: (x[0], x[1]), bf_res))
+    #bf_res = sorted(map(lambda x: (x[0], x[1]), bf_res))
+    bf_res = sorted(map(lambda x: (x.start, x.end), bf_res))
     comp_res = compare(it_res, bf_res)
     if comp_res != 1:
         raise Exception("unequal: %s" % comp_res)
     return it_time - bf_time
 
-tdi = list()
-for q in range(0, 1000, 5):
-    tdi.append(benchmark(q))
-
-import numpy as np
-print(np.mean(tdi), np.min(tdi), np.max(tdi))
-
-# print(len(it_res))
-# print(len(bf_res))
-# it_res = set(it_res)
-# bf_res = set(bf_res)
-# print(len(it_res))
-# print(len(bf_res))
+#tdi = list()
+#for q in range(0, 1000, 5):
+#    tdi.append(benchmark(q))
 #
-# print(bf_res - it_res)
-# print(it_res - bf_res)
+#import numpy as np
+#print(np.mean(tdi), np.min(tdi), np.max(tdi))
+
+print(it.query(300))
